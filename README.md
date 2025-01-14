@@ -1,6 +1,6 @@
 <h1>ReversibleCrafting</h1> 
 
-A simple plugin that lets players to reverse craft their items!
+Turn items back into resources with ease!!
 
 ---
 
