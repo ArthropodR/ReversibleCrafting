@@ -5,7 +5,7 @@ api-version: 1.16
 description: A plugin to reverse craft items through a custom GUI.
 commands:
   rvc:
-    description: Open the reversible crafting GUI
+    description: Main command for Reversible Crafting.
     usage: /rvc gui
 permissions:
   reversiblecrafting.gui:

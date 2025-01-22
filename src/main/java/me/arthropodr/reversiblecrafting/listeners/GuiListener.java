@@ -1,6 +1,7 @@
 package me.arthropodr.reversiblecrafting.listeners;
 
 import me.arthropodr.reversiblecrafting.ReversibleCrafting;
+import me.arthropodr.reversiblecrafting.gui.ReversibleGui;
 import me.arthropodr.reversiblecrafting.utils.ReverseUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -8,7 +9,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.inventory.Inventory;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.Arrays;
@@ -16,8 +18,6 @@ import java.util.List;
 
 public class GuiListener implements Listener {
     private final ReversibleCrafting plugin;
-
-    // List of allowed empty slots
     private final List<Integer> emptySlots = Arrays.asList(
             10, 11, 12, 13, 14, 15, 16,
             19, 20, 21, 22, 23, 24, 25,
@@ -31,47 +31,70 @@ public class GuiListener implements Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        Inventory inventory = event.getInventory();
+        if (!event.getView().getTitle().equals(ReversibleGui.getGuiTitle())) return;
 
-        // Check if the inventory is the Reversible Crafting GUI
-        if (!ChatColor.stripColor(event.getView().getTitle()).equals("Reversible Crafting")) return;
-
-        // Get the player and clicked slot
         Player player = (Player) event.getWhoClicked();
         int clickedSlot = event.getRawSlot();
 
-        // Allow the event if the clicked slot is outside the GUI (player's inventory)
-        if (clickedSlot >= inventory.getSize()) return;
-
-        // Allow interaction only for empty slots
-        if (emptySlots.contains(clickedSlot)) {
-            event.setCancelled(false); // Allow taking and placing items in these slots
+        if (clickedSlot >= event.getView().getTopInventory().getSize()) {
+            event.setCancelled(false);
             return;
         }
 
-        // Prevent interaction with glass panels and buttons
-        event.setCancelled(true);
-
-        ItemStack currentItem = event.getCurrentItem();
-        if (currentItem == null || currentItem.getType() == Material.AIR) return;
-
-        // Handle red glass (CANCEL)
-        if (currentItem.getType() == Material.RED_STAINED_GLASS_PANE) {
-            player.closeInventory();
-            player.sendMessage(ChatColor.RED + "Reversible crafting canceled!");
-            // Return items in the empty slots to the player
-            for (int slot : emptySlots) {
-                ItemStack item = inventory.getItem(slot);
-                if (item != null && item.getType() != Material.AIR) {
-                    player.getInventory().addItem(item);
-                    inventory.setItem(slot, null); // Clear the slot in the GUI
-                }
-            }
+        if (!emptySlots.contains(clickedSlot)) {
+            event.setCancelled(true);
         }
 
-        // Handle green glass (CONFIRM REVERSE)
-        if (currentItem.getType() == Material.GREEN_STAINED_GLASS_PANE) {
-            ReverseUtils.reverseItems(player, inventory);
+        ItemStack clickedItem = event.getCurrentItem();
+        if (clickedItem == null || clickedItem.getType() == Material.AIR) return;
+
+        if (clickedItem.getType() == Material.RED_STAINED_GLASS_PANE) {
+            returnItemsToPlayer(player, event.getInventory().getContents());
+            player.closeInventory();
+            player.sendMessage(ChatColor.RED + "Reversible crafting process has been cancelled.");
+        } else if (clickedItem.getType() == Material.GREEN_STAINED_GLASS_PANE) {
+            boolean anyReversed = false;
+            for (int slot : emptySlots) {
+                ItemStack itemInSlot = event.getInventory().getItem(slot);
+                if (itemInSlot != null && itemInSlot.getType() != Material.AIR) {
+                    if (ReverseUtils.reverseItem(player, itemInSlot.clone())) {
+                        event.getInventory().setItem(slot, null);
+                        anyReversed = true;
+                    }
+                }
+            }
+            if (!anyReversed) {
+                player.sendMessage(ChatColor.RED + "No items could be reversed.");
+            }
+        }
+    }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!event.getView().getTitle().equals(ReversibleGui.getGuiTitle())) return;
+
+        for (int slot : event.getRawSlots()) {
+            if (slot < event.getView().getTopInventory().getSize() && !emptySlots.contains(slot)) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!event.getView().getTitle().equals(ReversibleGui.getGuiTitle())) return;
+
+        returnItemsToPlayer((Player) event.getPlayer(), event.getInventory().getContents());
+    }
+
+    private void returnItemsToPlayer(Player player, ItemStack[] contents) {
+        for (int slot : emptySlots) {
+            ItemStack item = contents[slot];
+            if (item != null && item.getType() != Material.AIR) {
+                player.getInventory().addItem(item.clone()).forEach((index, leftover) ->
+                        player.getWorld().dropItemNaturally(player.getLocation(), leftover));
+            }
         }
     }
 }

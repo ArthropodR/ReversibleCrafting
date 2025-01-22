@@ -8,9 +8,11 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class ReversibleGui {
+    private static final String GUI_TITLE = ChatColor.DARK_GREEN + "Reversible Crafting";
 
     public static Inventory createGui() {
         try {
@@ -22,27 +24,27 @@ public class ReversibleGui {
             return null;
         }
 
-        Inventory gui = Bukkit.createInventory(null, 54, ChatColor.DARK_GREEN + "Reversible Crafting");
+        Inventory gui = Bukkit.createInventory(null, 54, GUI_TITLE);
 
         List<Integer> grayGlassSlots = Arrays.asList(
-                0, 1, 2, 3, 4, 5, 6, 7, 8,   // Row 1
-                9, 17,                       // Sides of Row 2
-                18, 26,                      // Sides of Row 3
-                27, 35,                      // Sides of Row 4
-                36, 44,                      // Sides of Row 5
-                45, 46, 47,                  // Bottom left
-                49, 51, 52, 53              // Bottom right (with gap for panels)
+                0, 1, 2, 3, 4, 5, 6, 7, 8,
+                9, 17,
+                18, 26,
+                27, 35,
+                36, 44,
+                45, 46, 47,
+                49, 51, 52, 53
         );
 
-        ItemStack grayGlass = createGlass(Material.GRAY_STAINED_GLASS_PANE, ChatColor.RESET + "");
+        ItemStack grayGlass = createGlass(Material.GRAY_STAINED_GLASS_PANE, ChatColor.GRAY + "");
+        ItemStack greenGlass = createGlass(Material.GREEN_STAINED_GLASS_PANE, ChatColor.GREEN + "CONFIRM REVERSE");
+        ItemStack redGlass = createGlass(Material.RED_STAINED_GLASS_PANE, ChatColor.RED + "CANCEL");
+
         for (int slot : grayGlassSlots) {
-            gui.setItem(slot, grayGlass);
+            gui.setItem(slot, grayGlass.clone());
         }
 
-        ItemStack greenGlass = createGlass(Material.GREEN_STAINED_GLASS_PANE, ChatColor.GREEN + "CONFIRM REVERSE");
         gui.setItem(48, greenGlass);
-
-        ItemStack redGlass = createGlass(Material.RED_STAINED_GLASS_PANE, ChatColor.RED + "CANCEL");
         gui.setItem(50, redGlass);
 
         return gui;
@@ -53,8 +55,13 @@ public class ReversibleGui {
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);
+            meta.setLore(Collections.singletonList(ChatColor.GRAY + "Click to perform action"));
             item.setItemMeta(meta);
         }
         return item;
+    }
+
+    public static String getGuiTitle() {
+        return GUI_TITLE;
     }
 }
