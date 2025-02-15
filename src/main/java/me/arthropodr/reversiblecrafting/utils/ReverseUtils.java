@@ -1,5 +1,7 @@
 package me.arthropodr.reversiblecrafting.utils;
 
+import me.arthropodr.reversiblecrafting.ReversibleCrafting;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -7,17 +9,36 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.ShapelessRecipe;
-import org.bukkit.Bukkit;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class ReverseUtils {
 
+    private static final Map<Material, ItemStack[]> customReverseRecipes = new HashMap<>();
+
+    static {
+        customReverseRecipes.putAll(NetheriteItems.getNetheriteRecipes());
+    }
+
     public static boolean reverseItem(Player player, ItemStack item) {
         if (item == null || item.getType() == Material.AIR) return false;
 
-        var recipes = Bukkit.getServer().getRecipesFor(new ItemStack(item.getType()));
+        DisableManager disableManager = new DisableManager(ReversibleCrafting.getInstance());
+        if (disableManager.isItemDisabled(item)) {
+            player.sendMessage(ChatColor.RED + "This item cannot be reversed.");
+            return false;
+        }
+
+        Material itemType = item.getType();
+        ItemStack originalItem = item.clone(); // Clone the original item to preserve its data
+
+        if (customReverseRecipes.containsKey(itemType)) {
+            giveReversedItems(player, originalItem, customReverseRecipes.get(itemType));
+            return true;
+        }
+
+        var recipes = Bukkit.getServer().getRecipesFor(new ItemStack(itemType));
         if (recipes.isEmpty()) {
             player.sendMessage(ChatColor.RED + "This item cannot be reversed.");
             return false;
@@ -30,13 +51,12 @@ public class ReverseUtils {
         }
 
         int resultAmount = bestRecipe.getResult().getAmount();
-
-        if (item.getAmount() < resultAmount) {
+        if (originalItem.getAmount() < resultAmount) {
             player.sendMessage(ChatColor.RED + "Need at least " + resultAmount + " items to reverse craft.");
             return false;
         }
 
-        int timesToReverse = item.getAmount() / resultAmount;
+        int timesToReverse = originalItem.getAmount() / resultAmount;
 
         Map<Material, Integer> ingredients = new HashMap<>();
         if (bestRecipe instanceof ShapelessRecipe) {
@@ -62,6 +82,10 @@ public class ReverseUtils {
             return false;
         }
 
+        // First verify if player has the item before removing anything
+        ItemStack itemToRemove = originalItem.clone();
+        itemToRemove.setAmount(timesToReverse * resultAmount);
+
         ingredients.forEach((material, amount) -> {
             ItemStack ingredient = new ItemStack(material, amount);
             Map<Integer, ItemStack> leftover = player.getInventory().addItem(ingredient);
@@ -69,17 +93,46 @@ public class ReverseUtils {
                     player.getWorld().dropItemNaturally(player.getLocation(), stack));
         });
 
-        int remainingItems = item.getAmount() % resultAmount;
-        if (remainingItems > 0) {
-            ItemStack remaining = item.clone();
-            remaining.setAmount(remainingItems);
-            player.getInventory().addItem(remaining).forEach((index, leftover) ->
-                    player.getWorld().dropItemNaturally(player.getLocation(), leftover));
+        player.sendMessage(ChatColor.GREEN + "Successfully reversed " + (timesToReverse * resultAmount) + " items!");
+        return true;
+    }
+
+    private static void removeExactItem(Player player, ItemStack originalItem, int amountToRemove) {
+        int remainingToRemove = amountToRemove;
+        ItemStack[] contents = player.getInventory().getContents();
+
+        for (int i = 0; i < contents.length && remainingToRemove > 0; i++) {
+            ItemStack invItem = contents[i];
+            if (invItem != null && invItem.isSimilar(originalItem)) {
+                if (invItem.getAmount() > remainingToRemove) {
+                    invItem.setAmount(invItem.getAmount() - remainingToRemove);
+                    remainingToRemove = 0;
+                } else {
+                    remainingToRemove -= invItem.getAmount();
+                    player.getInventory().setItem(i, null);
+                }
+            }
+        }
+        player.updateInventory();
+    }
+
+    private static void giveReversedItems(Player player, ItemStack item, ItemStack[] results) {
+        // First verify if player has the item
+        if (!player.getInventory().containsAtLeast(item, 1)) {
+            player.sendMessage(ChatColor.RED + "Could not find the required item in your inventory.");
+            return;
         }
 
-        player.sendMessage(ChatColor.GREEN + "Successfully reversed " +
-                (timesToReverse * resultAmount) + " items!");
-        return true;
+        // Remove the exact item that was used
+        removeExactItem(player, item, 1);
+
+        // Give the results
+        for (ItemStack result : results) {
+            player.getInventory().addItem(result).values()
+                    .forEach(leftover -> player.getWorld().dropItemNaturally(player.getLocation(), leftover));
+        }
+
+        player.sendMessage(ChatColor.GREEN + "Successfully reversed " + item.getType().name() + "!");
     }
 
     private static Recipe findBestRecipe(Iterable<Recipe> recipes) {

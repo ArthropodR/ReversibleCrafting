@@ -5,6 +5,8 @@ import me.arthropodr.reversiblecrafting.listeners.GuiListener;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+
 public class ReversibleCrafting extends JavaPlugin {
     private static ReversibleCrafting instance;
 
@@ -12,6 +14,11 @@ public class ReversibleCrafting extends JavaPlugin {
     public void onEnable() {
         instance = this;
         saveDefaultConfig();
+
+        if (!new File(getDataFolder(), "disabled-items.yml").exists()) {
+            saveResource("disabled-items.yml", false);
+        }
+
         getLogger().info("Reversible Crafting has been enabled!");
 
         RvcGuiCommand rvcGuiCommand = new RvcGuiCommand(this);
@@ -21,7 +28,7 @@ public class ReversibleCrafting extends JavaPlugin {
             command.setExecutor(rvcGuiCommand);
             command.setTabCompleter(rvcGuiCommand);
         } else {
-            getLogger().severe("Failed to register 'rvc' command - is it missing from plugin.yml?");
+            getLogger().severe("Failed to register 'rvc' command.");
             getServer().getPluginManager().disablePlugin(this);
             return;
         }

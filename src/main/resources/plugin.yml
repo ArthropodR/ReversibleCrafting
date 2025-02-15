@@ -3,11 +3,26 @@ main: me.arthropodr.reversiblecrafting.ReversibleCrafting
 version: 1.0
 api-version: 1.16
 description: A plugin to reverse craft items through a custom GUI.
+author: Arthropod
+
 commands:
   rvc:
     description: Main command for Reversible Crafting.
     usage: /rvc gui
+
 permissions:
   reversiblecrafting.gui:
     description: Allows players to use the /rvc gui command.
+    default: true
+
+  reversiblecrafting.disable:
+    description: Allows disabling items for reverse crafting
+    default: op
+
+  reversiblecrafting.enable:
+    description: Allows enabling items for reverse crafting
+    default: op
+
+  reversiblecrafting.list:
+    description: Allows viewing list of disabled items
     default: true
