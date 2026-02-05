@@ -8,4 +8,4 @@ Turn items back into resources with ease!
 * **[Permissions](https://github.com/ArthropodR/ReversibleCrafting/wiki/Permissions)**
 * **[config.yml](https://github.com/ArthropodR/ReversibleCrafting/blob/main/src/main/resources/config.yml)**
 
-<h3>End of support</h3>
+<h3>End of support - 2025 :(</h3>
