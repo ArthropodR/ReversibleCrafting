@@ -1,6 +1,6 @@
 <h1>ReversibleCrafting</h1> 
 
-Turn items back into resources with ease!!
+Turn items back into resources with ease!
 
 ---
 
